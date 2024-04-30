@@ -1,9 +1,5 @@
-
-
 import logging
-
 import cmdstanpy
-
 
 def setup_loggers(logfile):
     birdman_logger = logging.getLogger("birdman")

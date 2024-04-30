@@ -1,7 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
 import time
-
 import arviz as az
 import biom
 from birdman import ModelIterator
@@ -10,11 +9,12 @@ import click
 import numpy as np
 import pandas as pd
 from logger import setup_loggers
-# CHANGE TO IMPORT YOUR CLASS NAME FROM YOUR MODEL FILE
-from model_amyloid_single import AmyloidModelSingle
+from model_single import ModelSingle
 
 @click.command()
 @click.option("--table-path", required=True)
+@click.option("--metadata-path", required=True)
+@click.option("--formula", required=True)
 @click.option("--inference-dir", required=True)
 @click.option("--num-chunks", required=True, type=int)
 @click.option("--chunk-num", required=True, type=int)
@@ -26,6 +26,8 @@ from model_amyloid_single import AmyloidModelSingle
 @click.option("--logfile", required=True)
 def run_birdman(
     table_path,
+    metadata_path,
+    formula,
     inference_dir,
     num_chunks,
     chunk_num,
@@ -38,20 +40,31 @@ def run_birdman(
 ):
 
     TABLE = biom.load_table(table_path)
+    MD = pd.read_table(metadata_path, sep="\t", index_col='sample_name')
     FIDS = TABLE.ids(axis="observation")
     birdman_logger = setup_loggers(logfile)
+    
+    model_config = {
+        "metadata": MD,
+        "formula": formula
+    }
+
+    model_kwargs = {
+        "beta_prior": beta_prior,
+        "inv_disp_sd": inv_disp_sd,
+        "chains": chains,
+        "num_iter": num_iter,
+        "num_warmup": num_warmup
+    }
 
     model_iter = ModelIterator(
         TABLE,
-        # CHANGE TO YOUR CLASS NAME
-        AmyloidModelSingle,
+        ModelSingle,
         num_chunks=num_chunks,
-        beta_prior=beta_prior,
-        inv_disp_sd=inv_disp_sd,
-        chains=chains,
-        num_iter=num_iter,
-        num_warmup=num_warmup,
-    )
+        **model_kwargs,  
+        **model_config 
+    ) 
+    
     chunk = model_iter[chunk_num - 1]
 
     for feature_id, model in chunk:
@@ -61,8 +74,10 @@ def run_birdman(
         birdman_logger.info(f"Feature ID: {feature_id}")
 
         tmpdir = f"{inference_dir}/tmp/F{feature_num_str}_{feature_id}"
-        outfile = f"{inference_dir}/F{feature_num_str}_{feature_id}.nc"
+        infdir = f"{inference_dir}/inferences/"
+        outfile = f"{inference_dir}/inferences/F{feature_num_str}_{feature_id}.nc"
 
+        os.makedirs(infdir, exist_ok=True)
         os.makedirs(tmpdir, exist_ok=True)
 
         with TemporaryDirectory(dir=tmpdir) as t:

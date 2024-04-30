@@ -12,17 +12,16 @@ import pandas as pd
 # OPENING PYTHON/IPYTHON  
 # IMPORTING CMDSTANPY, THEN RUNNING 
 # cmdstanpy.CmdStanModel(stan_file="path/to/model.stan")
-MODEL_PATH = "/projects/u19/Wisconsin_MARS/birdman/src/stan/negative_binomial_single.stan"
-# REPLACE BELOW WITH YOUR METADATA 
-MD = pd.read_table("/projects/u19/Wisconsin_MARS/data/metadata/apoe4_metadata.tsv",
-                   sep="\t", index_col='sample_name')
+MODEL_PATH = "src/stan/negative_binomial_single.stan"
 
 # NAME CLASS SOMETHING RELEVANT TO YOUR MODEL
-class APOE4ModelSingle(SingleFeatureModel):
+class ModelSingle(SingleFeatureModel):
     def __init__(
         self,
         table: biom.Table,
         feature_id: str,
+        metadata: pd.DataFrame,
+        formula: str,
         # OPTIONAL: CHANGE PARAMETERS
         beta_prior: float = 5.0,
         inv_disp_sd: float = 0.5,
@@ -30,6 +29,10 @@ class APOE4ModelSingle(SingleFeatureModel):
         num_warmup: int = 500,
         **kwargs
     ):
+
+        kwargs.pop('metadata', None)  # Remove metadata if it's in kwargs
+        kwargs.pop('formula', None)   # Remove formula if it's in kwargs
+
         super().__init__(
             table=table,
             feature_id=feature_id,
@@ -40,16 +43,13 @@ class APOE4ModelSingle(SingleFeatureModel):
         )
 
 
-        D = table.shape[0]
-        A = np.log(1 / D) 
-        # REPLACE WITH YOUR PATSY STYLE FORMULA
-        self.create_regression(formula="apoe_risk_score_beta+sex+mars_age_fecal+bristol_type", metadata=MD)
+        self.create_regression(formula=formula, metadata=metadata)
 
         param_dict = {
             "depth": np.log(table.sum(axis="sample")),
             "B_p": beta_prior,
             "inv_disp_sd": inv_disp_sd,
-	    "A": A
+	          "A": np.log(1 / table.shape[0])
         }
         self.add_parameters(param_dict)
 
@@ -67,5 +67,4 @@ class APOE4ModelSingle(SingleFeatureModel):
             include_observed_data=True,
             posterior_predictive="y_predict",
             log_likelihood="log_lhood"
-
         )

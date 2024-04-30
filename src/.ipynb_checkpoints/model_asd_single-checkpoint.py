@@ -12,18 +12,17 @@ import pandas as pd
 # OPENING PYTHON/IPYTHON  
 # IMPORTING CMDSTANPY, THEN RUNNING 
 # cmdstanpy.CmdStanModel(stan_file="path/to/model.stan")
-MODEL_PATH = "/projects/u19/Wisconsin_MARS/birdman/src/stan/negative_binomial_single.stan"
+MODEL_PATH = "/home/lpatel/projects/2024-03-04_pierce-autism/scripts/MARS_Birdman/birdman/src/stan/negative_binomial_single.stan"
 # REPLACE BELOW WITH YOUR METADATA 
-MD = pd.read_table("/projects/u19/Wisconsin_MARS/data/metadata/amyloid_metadata.tsv",
-                   sep="\t", index_col='sample_name')
+MD = pd.read_table("/home/lpatel/projects/2024-03-04_pierce-autism/qiita/15350_20240110-175840.txt", sep="\t", index_col='sample_name')
 
-# NAME CLASS SOMETHING RELEVANT TO YOUR MODEL 
-class AmyloidModelSingle(SingleFeatureModel):
+# NAME CLASS SOMETHING RELEVANT TO YOUR MODEL
+class ASDModelSingle(SingleFeatureModel):
     def __init__(
         self,
         table: biom.Table,
         feature_id: str,
-        # OPTIONAL: CHANGE PARAMETERS  
+        # OPTIONAL: CHANGE PARAMETERS
         beta_prior: float = 5.0,
         inv_disp_sd: float = 0.5,
         num_iter: int = 500,
@@ -42,8 +41,8 @@ class AmyloidModelSingle(SingleFeatureModel):
 
         D = table.shape[0]
         A = np.log(1 / D) 
-	    # REPLACE WITH YOUR PATSY STYLE FORMULA 
-        self.create_regression(formula="amyloid_positive+sex+mars_age_fecal+bristol_type", metadata=MD)
+        # REPLACE WITH YOUR PATSY STYLE FORMULA
+        self.create_regression(formula="dx+gender+host_age", metadata=MD)
 
         param_dict = {
             "depth": np.log(table.sum(axis="sample")),

@@ -1,6 +1,6 @@
-# BIRDMAn Example Code
+# BIRDMAn - CLI
 
-Here I've included a framework for running [BIRDMAn](https://www.biorxiv.org/content/10.1101/2023.01.30.526328v1) on a SLURM server. 
+This is a framework and accompanying simple command line interfance for running [BIRDMAn](https://www.biorxiv.org/content/10.1101/2023.01.30.526328v1) on a SLURM server. 
 
 **1) Install BIRDMAn.**
 If you have trouble with installation [here](https://birdman.readthedocs.io/en/stable/?badge=stable), feel free to use the .yml file that I've provided in the repo: 
