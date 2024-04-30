@@ -86,6 +86,8 @@ echo "Job finished at $(date)"
     else:
       print(f"Failed to submit job: {submission_result.stderr}")
 
+def summarize(args):
+  pass
 
 def plot(args):
   pass
