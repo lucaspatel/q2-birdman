@@ -1,3 +1,4 @@
 birdman_test/
 birdman/
 out/
+.slurm*
