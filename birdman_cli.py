@@ -3,14 +3,15 @@ import os
 import click
 import pandas as pd
 import biom
-from _summarize_inferences import summarize_infernecs_single_omic2
-from _plot import birdman_plot_multiple_vars
+
+from src._summarize import summarize_inferences_single_omic2
+from src._plot import birdman_plot_multiple_vars
 
 sbatch_run_script = """#!/bin/bash
 #SBATCH --chdir={current_dir}
 #SBATCH --output={slurm_out_dir}/%x.%a.out
 #SBATCH --partition=short
-#SBATCH --mail-user="y1weng@uscd.edu"
+{mail_user_line}
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mem=64G
 #SBATCH --nodes=1
@@ -37,6 +38,10 @@ python {script_path} \\
 echo "Job finished at $(date)"
 """
 
+def _create_dir(output_dir):
+    sub_dirs = ["slurm_out", "logs", "inferences", "results", "plots"]
+    for sub_dir in sub_dirs:
+        os.makedirs(os.path.join(output_dir, sub_dir), exist_ok=True)
 
 @click.group()
 def cli():
@@ -50,30 +55,27 @@ def cli():
 @click.option("-m", "--metadata-path", type=str, required=True, help="Path to the metadata file")
 @click.option("-f", "--formula", type=str, required=True, help="Formula for the model")
 @click.option("-o", "--output-dir", type=str, required=True, help="Output directory for saving results")
+@click.option("-e", "--email", type=str, required=False, help="Email for SLURM notifications")
 # fmt: on
-def run(biom_path, metadata_path, formula, output_dir):
+def run(biom_path, metadata_path, formula, output_dir, email=None):
     """Run BIRDMAn and save the inference results."""
-    slurm_out_dir = os.path.join(output_dir, "slurm_out")
-    log_dir = os.path.join(output_dir, "logs")
-    inferences_dir = os.path.join(output_dir, "inferences")
-    results_dir = os.path.join(output_dir, "results")
-    plots_dir = os.path.join(output_dir, "plots")
 
-    os.makedirs(slurm_out_dir, exist_ok=True)
-    os.makedirs(log_dir, exist_ok=True)
+    _create_dir(output_dir)
 
     # Write the SBATCH script to file
-    sbatch_file_path = os.path.join(log_dir, "birdman_run.sh")
+    mail_user_line = f'#SBATCH --mail-user="{email}"' if email is not None else ''
+    sbatch_file_path = os.path.join(output_dir, "logs", "birdman_run.sh")
     with open(sbatch_file_path, "w") as file:
         sbatch_script = sbatch_run_script.format(
             current_dir=os.getcwd(),
-            slurm_out_dir=slurm_out_dir,
+            slurm_out_dir=os.path.join(output_dir, "slurm_out"),
             biom_path=biom_path,
             script_path=os.path.join(os.getcwd(), "src/birdman_chunked.py"),
             metadata_path=metadata_path,
             formula=formula,
             output_dir=output_dir,
-            log_dir=log_dir,
+            log_dir=os.path.join(output_dir, "logs"),
+            mail_user_line=mail_user_line
         )
         file.write(sbatch_script)
 
@@ -88,7 +90,6 @@ def run(biom_path, metadata_path, formula, output_dir):
     else:
         print(f"Failed to submit job: {submission_result.stderr}")
 
-
 @cli.command()
 @click.option("-i", "--input-dir", type=click.Path(exists=True), required=True)
 @click.option("-o", "--output-dir", required=True)
@@ -96,15 +97,7 @@ def run(biom_path, metadata_path, formula, output_dir):
 @click.option("-t", "--threads", type=int, default=1)
 def summarize(input_dir, output_dir, omic, threads):
     """Generate summarized inferences from directory of inference files."""
-    slurm_out_dir = os.path.join(output_dir, "slurm_out")
-    log_dir = os.path.join(output_dir, "logs")
-    inferences_dir = os.path.join(output_dir, "inferences")
-    results_dir = os.path.join(output_dir, "results")
-    plots_dir = os.path.join(output_dir, "plots")
-
-    os.makedirs(slurm_out_dir, exist_ok=True)
-    os.makedirs(log_dir, exist_ok=True)
-    summarize_infernecs_single_omic2(input_dir, output_dir, omic, threads)
+    summarize_inferences_single_omic2(input_dir, output_dir, omic, threads)
 
 
 @cli.command()
@@ -112,7 +105,7 @@ def summarize(input_dir, output_dir, omic, threads):
 @click.option("-i", "--input-path", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
 @click.option("-o", "--output-dir", type=str, required=True, help="Output directory where plots are saved")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]")
-@click.option("-m", "--feature-metadata", type=click.Path(exists=True), required=False, help="Path to the feature metadata. First and second column represent feature ids and names")
+@click.option("-m", "--metadata-path", type=click.Path(exists=True), required=False, help="Path to the feature metadata. First and second column represent feature ids and names")
 # fmt: on
 def plot(input_path, output_dir, feature_metadata, variables):
     """Generate plots from summarized inferences."""

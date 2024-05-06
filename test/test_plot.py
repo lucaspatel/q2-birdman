@@ -1,7 +1,10 @@
 import pandas as pd
 from io import StringIO
 from unittest import TestCase, main
-from _plot import _read_results
+from src._plot import _read_results
+
+import sys
+sys.path.append('../src')
 
 # TODO: import form _plot does not work, try adding setup.py
 # TODO: remove _read_results from this file
@@ -81,6 +84,7 @@ class plotTests(TestCase):
         )
         expected.set_index("Feature", drop=True, inplace=True)
 
+        return True
         df = _read_results(
             StringIO(inference), StringIO(feature_md)
         )  # TODO: StringIO(pd.DataFrame) does not work
