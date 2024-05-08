@@ -72,8 +72,8 @@ def summarize_inferences_single_file(inf_file):
 
 
 def summarize_inferences_single_omic2(input_dir, output_dir, omic, threads=1):
-    _create_folder_without_clear(output_dir)
-    all_inf_files = glob(f"{input_dir}/*.nc")
+    #_create_folder_without_clear(output_dir)
+    all_inf_files = glob(f"{input_dir}/inferences/*.nc")
 
     results = _parallel(threads, summarize_inferences_single_file, all_inf_files)
     feat_diff_df_list = [df for df in results if df is not None]

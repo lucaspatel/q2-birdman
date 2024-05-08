@@ -1,29 +1,31 @@
 import patsy
+import biom
+import pandas as pd
+import click
 
-def is_valid_patsy_formula(formula, data={}):
+def is_valid_patsy_formula(formula, table_path, metadata_path):
     """
-    Check if the given formula is a valid Patsy-style formula.
+    Validates whether a string is a valid Patsy-style formula by attempting to construct a design matrix using data from specified paths.
 
     Parameters:
-        formula (str): The formula string to validate.
-        data (dict, optional): A dictionary representing a sample data frame where
-                               keys are column names and values are lists of data.
-                               Defaults to an empty dictionary, which will not validate
-                               variable names in the formula.
+    - formula (str): The Patsy formula string to validate.
+    - table_path (str): The file path to the BIOM table, which provides sample IDs.
+    - metadata_path (str): The file path to the metadata CSV file, which contains variables expected in the formula as column headers.
 
     Returns:
-        bool: True if the formula is valid, False otherwise.
+    - bool: True if the formula is valid within the context of the provided data, False otherwise.
+
+    This function attempts to construct a design matrix using the formula and data. It first extracts variable names from the metadata CSV file headers. Then, it loads sample IDs from the BIOM table and uses these to align and subset the metadata. An exception in parsing or matrix construction results in a False return, and the error is printed along with a list of valid variables.
     """
+    table = biom.load_table(table_path)
+    sample_names = table.ids(axis="sample")
+    metadata = pd.read_csv(metadata_path, sep='\t', dtype=str, index_col=0)
+    variables = list(metadata.columns)
+    formatted_list = ', '.join(variables)
     try:
-        # Attempt to create a design matrix. If no data is provided,
-        # Patsy will only check for syntax correctness.
-        patsy.dmatrix(formula, data)
+        patsy.dmatrix(formula, metadata.loc[sample_names], return_type="dataframe")
         return True
-    except (patsy.PatsyError, ValueError) as e:
-        # Print the error message optionally or handle it based on your needs
-        print(f"Invalid formula: {e}")
+    except Exception as e:
+        click.echo(f"Invalid formula: {e}.", err=True)
+        click.echo(f"Valid variables are: {formatted_list}", err=True)
         return False
-
-# Example usage
-print(is_valid_patsy_formula("y ~ x1 + x2"))  # Should return True if syntax is correct
-
