@@ -1,10 +1,11 @@
-import subprocess
 import os
 import click
+import subprocess
 import pandas as pd
+from pathlib import Path
 import biom
 
-from src._summarize import summarize_inferences_single_omic
+from src._summarize import summarize_inferences
 from src._plot import birdman_plot_multiple_vars
 from src._utils import is_valid_patsy_formula
 
@@ -117,24 +118,22 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
         click.echo(f"Failed to submit job: {submission_result.stderr}", nl=False)
 
 @cli.command()
-@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True)
-@click.option("-o", "--output-dir",type=click.Path(exists=True) ,required=True)
-@click.option("--omic", type=str, required=True)
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the directory containing inference files (*.nc)")
 @click.option("-t", "--threads", type=int, default=1)
-def summarize(input_dir, output_dir, omic, threads):
+def summarize(input_dir, threads):
     """Generate summarized inferences from directory of inference files."""
-    summarize_inferences_single_omic(input_dir, output_dir, omic, threads)
+    output_dir = str(Path(input_dir).parents[0] / "inferences_results")
+    summarize_inferences(input_dir, output_dir, threads)
 
 
 @cli.command()
 @click.option("-i", "--input-path", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
-@click.option("-o", "--output-dir", type=str, required=True, help="Output directory where plots are saved")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
-@click.option("-m", "--metadata-path", type=click.Path(exists=True), required=False, help="Path to the feature metadata. First and second column represent feature ids and names")
-@click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation.")
-def plot(input_path, output_dir, feature_metadata, variables):
+@click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
+def plot(input_path, taxonomy_path, variables):
     """Generate plots from summarized inferences."""
-    birdman_plot_multiple_vars(input_path, output_dir, feature_metadata, variables)
+    output_dir = str(Path(input_path).parents[1] / "plots")
+    birdman_plot_multiple_vars(input_path, output_dir, taxonomy_path, variables)
 
 if __name__ == "__main__":
     cli()
