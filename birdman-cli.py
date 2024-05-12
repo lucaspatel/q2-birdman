@@ -4,7 +4,7 @@ import click
 import pandas as pd
 import biom
 
-from src._summarize import summarize_inferences_single_omic2
+from src._summarize import summarize_inferences_single_omic
 from src._plot import birdman_plot_multiple_vars
 from src._utils import is_valid_patsy_formula
 
@@ -123,7 +123,7 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
 @click.option("-t", "--threads", type=int, default=1)
 def summarize(input_dir, output_dir, omic, threads):
     """Generate summarized inferences from directory of inference files."""
-    summarize_inferences_single_omic2(input_dir, output_dir, omic, threads)
+    summarize_inferences_single_omic(input_dir, output_dir, omic, threads)
 
 
 @cli.command()

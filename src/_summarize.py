@@ -71,7 +71,7 @@ def summarize_inferences_single_file(inf_file):
         return None
 
 
-def summarize_inferences_single_omic2(input_dir, output_dir, omic, threads=1):
+def summarize_inferences_single_omic(input_dir, output_dir, omic, threads=1):
     #_create_folder_without_clear(output_dir)
     all_inf_files = glob(f"{input_dir}/inferences/*.nc")
 
