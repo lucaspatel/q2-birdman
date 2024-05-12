@@ -4,13 +4,7 @@ import pandas as pd
 from glob import glob
 from pathlib import Path
 from multiprocessing.pool import ThreadPool
-
-def _create_folder_without_clear(dir):
-    dir = Path(dir)
-    if dir.exists() and dir.is_dir():
-        return
-    else:
-        dir.mkdir(parents=True, exist_ok=True)
+from src._utils import _create_folder_without_clear
 
 
 def _process_dataframe(df, feat_id, suffix=""):
@@ -72,7 +66,7 @@ def summarize_inferences_single_file(inf_file):
 
 
 def summarize_inferences(input_dir, output_dir, threads=1):
-    #_create_folder_without_clear(output_dir)
+    _create_folder_without_clear(output_dir)
     all_inf_files = glob(f"{input_dir}/*.nc")
 
     results = _parallel(threads, summarize_inferences_single_file, all_inf_files)

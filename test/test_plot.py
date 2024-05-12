@@ -1,8 +1,3 @@
-import os # TODO: remoev when setup.py is created
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
 import unittest
 import numpy as np
 import pandas as pd
@@ -65,7 +60,7 @@ G900129965\tmicrobe5
             }
         )
         self.feature_md_dataframe.set_index("Feature", drop=True, inplace=True)
-        self.summarized_inference_file = "./data/191733_none.beta_var.tsv"
+        self.summarized_inference_file = "./data/inferences_results/191733_none.beta_var.tsv"
 
     def assertIsFile(self, path):
         if not Path(path).resolve().is_file():
@@ -131,11 +126,11 @@ G900129965\tmicrobe5
 
 
     def test_birdman_plot_multiple_vars(self):
-        expected_files = ["./data/host_age[T.18]_plot.png", "./data/host_age[T.34]_plot.png"]
+        expected_files = ["./data/plots/host_age[T.18]_plot.png", "./data/plots/host_age[T.34]_plot.png"]
         for file in expected_files:
             if Path(file).resolve().is_file():
                 Path.unlink(Path(file))
-        birdman_plot_multiple_vars(self.summarized_inference_file, "./data/", None, "host_age[T.34],host_age[T.18]")
+        birdman_plot_multiple_vars(self.summarized_inference_file, "./data/plots", None, "host_age[T.34],host_age[T.18]")
         for file in expected_files:
             self.assertIsFile(file)
 

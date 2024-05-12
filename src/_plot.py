@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from src._utils import _create_folder_without_clear
 
 
 def _read_results(p, feature_md_path):
@@ -82,6 +83,7 @@ def birdman_plot_single_var(df_inf, var, outdir):
 
 
 def birdman_plot_multiple_vars(input_path, output_dir, feature_metadata, vars):
+    _create_folder_without_clear(output_dir)
     df = _read_results(input_path, feature_metadata)
     vars = [v.strip() for v in vars.split(",")]
     for var in vars:

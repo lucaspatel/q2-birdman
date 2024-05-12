@@ -1,7 +1,3 @@
-import os # TODO: remoev when setup.py is created
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import unittest
 import pandas as pd
 from io import StringIO

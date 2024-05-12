@@ -2,6 +2,7 @@ import patsy
 import biom
 import pandas as pd
 import click
+from pathlib import Path
 
 def is_valid_patsy_formula(formula, table_path, metadata_path):
     """
@@ -29,3 +30,11 @@ def is_valid_patsy_formula(formula, table_path, metadata_path):
         click.echo(f"Invalid formula: {e}.", err=True)
         click.echo(f"Valid variables are: {formatted_list}", err=True)
         return False
+    
+
+def _create_folder_without_clear(dir):
+    dir = Path(dir)
+    if dir.exists() and dir.is_dir():
+        return
+    else:
+        dir.mkdir(parents=True, exist_ok=True)
