@@ -8,21 +8,21 @@ from src._summarize import summarize_inferences_single_omic2
 from src._plot import birdman_plot_multiple_vars
 from src._utils import is_valid_patsy_formula
 
-sbatch_run_script = """#!/bin/bash
+sbatch_run_script = """#!/bin/bash -l
 #SBATCH --chdir={current_dir}
-#SBATCH --output={slurm_out_dir}/%x.%a.out
-#SBATCH --partition=short
+#SBATCH --output={slurm_out_dir}/%x.%A_%a.out
+#SBATCH --error={slurm_out_dir}/%x.%A_%a.err
 {mail_user_line}
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mem=64G
+#SBATCH --mem=64G # check memory, scff output
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=4 # check cpus
 #SBATCH --time=6:00:00
 #SBATCH --array=1-20
 
 # source ~/software/miniconda3/bin/activate birdman
-source /home/y1weng/miniconda3/etc/profile.d/conda.sh
-conda activate /home/y1weng/mambaforge/envs/birdman
+# source /home/y1weng/miniconda3/etc/profile.d/conda.sh
+conda activate /home/y1weng/mambaforge/envs/birdman # fix name
 
 echo "Running on $(hostname); started at $(date)"
 echo "Chunk $SLURM_ARRAY_TASK_ID / $SLURM_ARRAY_TASK_MAX"
@@ -64,11 +64,39 @@ def _create_dir(output_dir):
     for sub_dir in sub_dirs:
         os.makedirs(os.path.join(output_dir, sub_dir), exist_ok=True)
 
-def _check_dir(output_dir):
-    inferences_dir = os.path.join(output_dir, "inferences")
-    if os.path.exists(inferences_dir) and any(file.endswith('.nc') for file in os.listdir(inferences_dir)):
-        click.confirm('Some inference files detected in provided directory. Do you want to continue?', abort=True)
+def _check_dir(output_dir, command):
+    """
+    Checks the directory based on the command type and handles different cases.
 
+    Args:
+    - command (str): The command type that could be 'run', 'summarize', or 'plot'.
+    - output_dir (str): The path to the directory to check.
+    """
+    def check_run():
+        inferences_dir = os.path.join(output_dir, "inferences")
+        if os.path.exists(inferences_dir) and any(file.endswith('.nc') for file in os.listdir(inferences_dir)):
+            click.confirm('Some inference files detected in provided directory. Do you want to overwrite?', abort=True)
+
+    def check_summarize():
+        results_dir = os.path.join(output_dir, "results")
+        if os.path.exists(results_dir) and any(file.endswith('.tsv') for file in os.listdir(results_dir)):
+          click.confirm('Some summarized results files detected in provided directory. Do you want to overwrite?', abort=True)
+
+    def check_plot():
+        plots_dir = os.path.join(output_dir, "plots")
+        if os.path.exists(plots_dir) and any(file.endswith('.svg') for file in os.listdir(plots_dir)):
+          click.confirm('Some plots detected in provided directory. Do you want to overwrite?', abort=True)
+
+    options = {
+        'run': check_run,
+        'summarize': check_summarize,
+        'plot': check_plot
+    }
+
+    if command in options:
+        options[command]()
+    else:
+        raise ValueError(f"Unsupported command for _check_dir: {command}")
 
 @click.group()
 def cli():
@@ -84,7 +112,7 @@ def cli():
 def run(table_path, metadata_path, formula, output_dir, email=None):
     """Run BIRDMAn and save the inference results."""
 
-    _check_dir(output_dir)
+    _check_dir(output_dir, 'run')
     _create_dir(output_dir)
     is_valid_patsy_formula(formula, table_path, metadata_path)
 
@@ -123,8 +151,8 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
 @click.option("-t", "--threads", type=int, default=1)
 def summarize(input_dir, output_dir, omic, threads):
     """Generate summarized inferences from directory of inference files."""
+    _check_dir(output_dir, 'summarize')
     summarize_inferences_single_omic2(input_dir, output_dir, omic, threads)
-
 
 @cli.command()
 @click.option("-i", "--input-path", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
@@ -134,6 +162,7 @@ def summarize(input_dir, output_dir, omic, threads):
 @click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation.")
 def plot(input_path, output_dir, feature_metadata, variables):
     """Generate plots from summarized inferences."""
+    _check_dir(output_dir, 'plot')
     birdman_plot_multiple_vars(input_path, output_dir, feature_metadata, variables)
 
 if __name__ == "__main__":

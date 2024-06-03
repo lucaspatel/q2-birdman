@@ -9,6 +9,7 @@ This is a framework and accompanying simple command line interfance for running 
 First, install BIRDMAn and its associated dependencies as described [here](https://birdman.readthedocs.io/en/stable/?badge=stable). For convenience, we've provided a [conda](https://docs.conda.io/en/latest/) environment file:
 ```bash
 conda env create -f birdman.yml -n birdman
+conda activate birdman
 ```
 
 Or, if using [mamba](https://mamba.readthedocs.io/en/latest/):
@@ -26,7 +27,7 @@ git clone https://github.com/lucaspatel/BIRDMAn-CLI.git
 ```
 
 ## Usage
-This CLI consists of three main functions: `run`, `summarize`, and `plot`. Below are examples of how to use each:
+This CLI consists of three main functions: `run`, `summarize`, and `plot`. Each step must be run sequentially. Below are examples of how to use each:
 
 ### Run
 The `run` command ingests a [BIOM](https://biom-format.org) table, a metadata, a [Patsy-style](https://patsy.readthedocs.io/en/latest/formulas.html) formula, and an output directory. This command will execute BIRDMAn's main modeling logic, distributed across several jobs via submission to a SLURM cluster. This is accomplished by writing a script file to `<OUT_PATH>/logs` and submitting it. Depending on the size of the input BIOM table, this step may take a long time to complete.
