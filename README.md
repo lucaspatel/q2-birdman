@@ -26,25 +26,31 @@ Next, simply clone this repository:
 git clone https://github.com/lucaspatel/BIRDMAn-CLI.git
 ```
 
+Then, move into the repository and install:
+```bash
+cd BIRDMAn-CLI
+pip install -e .
+```
+
 ## Usage
 This CLI consists of three main functions: `run`, `summarize`, and `plot`. Each step must be run sequentially. Below are examples of how to use each:
 
 ### Run
 The `run` command ingests a [BIOM](https://biom-format.org) table, a metadata, a [Patsy-style](https://patsy.readthedocs.io/en/latest/formulas.html) formula, and an output directory. This command will execute BIRDMAn's main modeling logic, distributed across several jobs via submission to a SLURM cluster. This is accomplished by writing a script file to `<OUT_PATH>/logs` and submitting it. Depending on the size of the input BIOM table, this step may take a long time to complete.
 ```bash
-python birdman-cli.py run -i <BIOM_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
+birdman run -i <BIOM_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
 ```
 
 ### Summarize
 The `summarize` command parses the results from a previous `run` command and aggeregates the results into a singular tab-separated file.
 ```bash
-python birdman-cli.py summarize -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
+birdman summarize -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
 ```
 
 ### Plot
 The `plot` command generates figures by parsing and annotating the results from the previous `summarize` command. The figures are barplots that depict the modeled log-ratios with error estimates.
 ```bash
-python birdman-cli.py plot -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -v <VARIABLES> -t <TAXONOMY>
+birdman plot -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -v <VARIABLES> -t <TAXONOMY>
 ```
 
 ## Testing

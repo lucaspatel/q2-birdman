@@ -1,10 +1,11 @@
-import subprocess
 import os
 import click
+import subprocess
 import pandas as pd
+from pathlib import Path
 import biom
 
-from src._summarize import summarize_inferences_single_omic2
+from src._summarize import summarize_inferences
 from src._plot import birdman_plot_multiple_vars
 from src._utils import is_valid_patsy_formula
 
@@ -51,9 +52,10 @@ def _parse_metadata_columns(metadata_path):
 def _autocomplete_variables(args, incomplete):
     """Autocomplete variables based on columns in the metadata file."""
     try:
-        metadata_index = args.index('-m') + 1
-        metadata_path = args[metadata_index]
-        if metadata_path:
+        input_path_index = args.index('-i') + 1
+        input_path = args[input_path_index]
+        results_path = os.path.join(input_path, "results", "beta_var.tsv")
+        if results_path:
             columns = _parse_metadata_columns(metadata_path)
             return [col for col in columns if incomplete in col]
     except (ValueError, IndexError):
@@ -145,25 +147,22 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
         click.echo(f"Failed to submit job: {submission_result.stderr}", nl=False)
 
 @cli.command()
-@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True)
-@click.option("-o", "--output-dir",type=click.Path(exists=True) ,required=True)
-@click.option("--omic", type=str, required=True)
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the directory containing inference files (*.nc)")
 @click.option("-t", "--threads", type=int, default=1)
-def summarize(input_dir, output_dir, omic, threads):
+def summarize(input_dir, threads):
     """Generate summarized inferences from directory of inference files."""
-    _check_dir(output_dir, 'summarize')
-    summarize_inferences_single_omic2(input_dir, output_dir, omic, threads)
+    _check_dir(input_dir, 'summarize')
+    summarize_inferences(input_dir, threads)
 
 @cli.command()
-@click.option("-i", "--input-path", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
-@click.option("-o", "--output-dir", type=str, required=True, help="Output directory where plots are saved")
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
-@click.option("-m", "--metadata-path", type=click.Path(exists=True), required=False, help="Path to the feature metadata. First and second column represent feature ids and names")
-@click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation.")
-def plot(input_path, output_dir, feature_metadata, variables):
+@click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
+@click.option("--flip", type="bool", default=False)
+def plot(input_dir, variables, taxonomy_path, flip):
     """Generate plots from summarized inferences."""
-    _check_dir(output_dir, 'plot')
-    birdman_plot_multiple_vars(input_path, output_dir, feature_metadata, variables)
+    _check_dir(input_dir, 'plot')
+    birdman_plot_multiple_vars(input_dir, variables, taxonomy_path)
 
 if __name__ == "__main__":
     cli()

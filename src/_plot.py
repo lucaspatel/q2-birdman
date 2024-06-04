@@ -1,8 +1,44 @@
+import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from src._utils import _create_folder_without_clear
 
+
+# TODO: INTEGRATE
+"""
+# author: Lucas Patel (lpatel@ucsd.edu)
+# data prep and taxonomy mapping
+
+for k in data_dict.keys(): 
+    for v in vars_to_check.keys(): 
+        if v in k:
+            xlab = 'Ratio for ' + v
+            var = vars_to_check[v]
+            
+    ylab = k.split('_')[1] + ' Feature'
+    df_for_display = data_dict[k].reset_index()
+    df_for_display = df_for_display.loc[df_for_display.credible == 'yes']
+
+df = data_dict['ASD_all']
+df = df.loc[df.credible == 'yes']
+df['taxon'] = taxonomy_new.loc[df.index]['Taxon']
+# Function to parse the last two taxonomic levels and clean placeholders
+def parse_taxon(taxon):
+    levels = taxon.split(';')
+    genus = levels[-2].strip() if len(levels) > 1 else ""
+    species = levels[-1].strip() if len(levels) > 0 else ""
+    
+    # Replace placeholder values (e.g., 'g__', 's__') with an empty string
+    genus = genus if not genus.endswith("__") else ""
+    species = species if not species.endswith("__") else ""
+    
+    return genus, species
+
+# Apply the function to each taxon entry and expand into two new columns
+df['Genus'], df['Species'] = zip(*df['taxon'].apply(parse_taxon))
+"""
 
 def _read_results(p, feature_md_path):
     inf = pd.read_csv(p, sep="\t", index_col="Feature")
@@ -58,12 +94,10 @@ def _display_top_n_feats(df, n, yvar, xvar, xlab, ylab, title, outdir):
     plt.ylabel(ylab)
     plt.xlabel(xlab)
     plt.title(title)
-    plt.tight_layout()
-    plt.savefig(f'{outdir}/{xlab.split("Ratio for ")[1]}_plot.png')
-    # plt.show()
+    plt.savefig(f'{outdir}/{xlab.split("Ratio for ")[1]}_plot.png', bbox_inches='tight')
+    plt.savefig(f'{outdir}/{xlab.split("Ratio for ")[1]}_plot.svg', bbox_inches='tight')
 
-
-def birdman_plot_single_var(df_inf, var, outdir):
+def birdman_plot_single_var(df_inf, var, flip, outdir):
     # TODO: move print statements to log
     # print("Unfiltered Shape:  " + str(df_inf.shape))
     sub_df = _unpack_hdi_and_filter(df_inf, var + "_hdi")
@@ -81,8 +115,11 @@ def birdman_plot_single_var(df_inf, var, outdir):
     )
 
 
-def birdman_plot_multiple_vars(input_path, output_dir, feature_metadata, vars):
+def birdman_plot_multiple_vars(input_dir, variables, feature_metadata, flip):
+    #_create_folder_without_clear(output_dir)
+    input_path = os.path.join(input_dir, "results", "beta_var.tsv")
+    output_dir = os.path.join(input_dir, "plots")
     df = _read_results(input_path, feature_metadata)
-    vars = [v.strip() for v in vars.split(",")]
-    for var in vars:
-        birdman_plot_single_var(df, var, output_dir)
+    variables = [v.strip() for v in variables.split(",")]
+    for var in variables:
+        birdman_plot_single_var(df, var, flip, output_dir)

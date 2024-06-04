@@ -4,13 +4,7 @@ import pandas as pd
 from glob import glob
 from pathlib import Path
 from multiprocessing.pool import ThreadPool
-
-def _create_folder_without_clear(dir):
-    dir = Path(dir)
-    if dir.exists() and dir.is_dir():
-        return
-    else:
-        dir.mkdir(parents=True, exist_ok=True)
+from src._utils import _create_folder_without_clear
 
 
 def _process_dataframe(df, feat_id, suffix=""):
@@ -71,7 +65,7 @@ def summarize_inferences_single_file(inf_file):
         return None
 
 
-def summarize_inferences_single_omic2(input_dir, output_dir, omic, threads=1):
+def summarize_inferences(input_dir, threads=1):
     #_create_folder_without_clear(output_dir)
     all_inf_files = glob(f"{input_dir}/inferences/*.nc")
 
@@ -82,7 +76,7 @@ def summarize_inferences_single_omic2(input_dir, output_dir, omic, threads=1):
         all_feat_diffs_df = pd.concat(feat_diff_df_list, axis=0)
         all_feat_diffs_df.index.name = "Feature"
         all_feat_diffs_df.to_csv(
-            f"{output_dir}/{omic}.beta_var.tsv", sep="\t", index=True
+            f"{input_dir}/results/beta_var.tsv", sep="\t", index=True
         )
     else:
         print("No available feat_diff_dfs...")  # TODO: chaneg this to log
