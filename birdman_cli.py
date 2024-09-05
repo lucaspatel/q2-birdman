@@ -21,9 +21,8 @@ sbatch_run_script = """#!/bin/bash -l
 #SBATCH --time=6:00:00
 #SBATCH --array=1-20
 
-# source ~/software/miniconda3/bin/activate birdman
-# source /home/y1weng/miniconda3/etc/profile.d/conda.sh
-conda activate /home/y1weng/mambaforge/envs/birdman # fix name
+source ~/.bashrc
+conda activate birdman 
 
 echo "Running on $(hostname); started at $(date)"
 echo "Chunk $SLURM_ARRAY_TASK_ID / $SLURM_ARRAY_TASK_MAX"
@@ -126,7 +125,7 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
             current_dir=os.getcwd(),
             slurm_out_dir=os.path.join(output_dir, "slurm_out"),
             table_path=table_path,
-            script_path=os.path.join(os.getcwd(), "src/birdman_chunked.py"),
+            script_path=os.path.join("/home/lpatel/projects/2024-07-17_q2-birdman/birdman-github", "src/birdman_chunked.py"),
             metadata_path=metadata_path,
             formula=formula,
             output_dir=output_dir,
@@ -135,7 +134,6 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
         )
         file.write(sbatch_script)
 
-    return True
     # Submit the script
     submit_command = f"sbatch {sbatch_file_path}"
     submission_result = subprocess.run(submit_command, shell=True, capture_output=True, text=True)
@@ -158,7 +156,7 @@ def summarize(input_dir, threads):
 @click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
 @click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
-@click.option("--flip", type="bool", default=False)
+@click.option("-f", "--flip", is_flag=True, help="Flip the variable from positive to negative or vice versa.", default=False, type=bool)
 def plot(input_dir, variables, taxonomy_path, flip):
     """Generate plots from summarized inferences."""
     _check_dir(input_dir, 'plot')

@@ -12,7 +12,7 @@ import pandas as pd
 # OPENING PYTHON/IPYTHON  
 # IMPORTING CMDSTANPY, THEN RUNNING 
 # cmdstanpy.CmdStanModel(stan_file="path/to/model.stan")
-MODEL_PATH = "src/stan/negative_binomial_single.stan"
+MODEL_PATH = "/home/lpatel/projects/2024-07-17_q2-birdman/src/stan/negative_binomial_single.stan"
 
 # NAME CLASS SOMETHING RELEVANT TO YOUR MODEL
 class ModelSingle(SingleFeatureModel):
