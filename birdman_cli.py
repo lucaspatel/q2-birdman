@@ -1,70 +1,37 @@
-import argparse
-import biom
-import pandas as pd
-from birdman import NegativeBinomial
-from src.model_single import ModelSingle
-from birdman.transform import posterior_alr_to_clr
-import birdman.visualization as viz
-import subprocess
 import os
+import click
+import subprocess
+import pandas as pd
+from pathlib import Path
+import biom
 
-def transform_inference(nb):
-    inference = nb.to_inference()
-    inference.posterior = posterior_alr_to_clr(
-        inference.posterior,
-        alr_params=["beta_var"],
-        dim_replacement={"feature_alr": "feature"},
-        new_labels=nb.feature_names
-    )
-    return inference
+from src._summarize import summarize_inferences
+from src._plot import birdman_plot_multiple_vars
+from src._utils import is_valid_patsy_formula
 
-def save_inference(inference, output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    outfile = os.path.join(output_dir, "inference.nc")
-    inference.to_netcdf(outfile)
-
-def plot_estimates(inference, output_dir):
-    ax = viz.plot_parameter_estimates(
-        inference,
-        parameter="beta_var",
-        coords={"covariate": "diet[T.DIO]"}
-    )
-    fig = ax.get_figure()
-    fig.savefig(os.path.join(output_dir, "parameter_estimates.png"))
-
-def run(args):
-    slurm_out_dir = os.path.join(args.output_dir, "slurm_out")
-    log_dir = os.path.join(args.output_dir, "logs")
-    inferences_dir = os.path.join(args.output_dir, "inferences")
-    results_dir = os.path.join(args.output_dir, "results")
-    plots_dir = os.path.join(args.output_dir, "plots")
-    os.makedirs(slurm_out_dir, exist_ok=True)
-    os.makedirs(log_dir, exist_ok=True)
-
-    # Prepare the SBATCH script
-    sbatch_script_content = f"""#!/bin/bash
-#SBATCH --chdir={os.getcwd()}
-#SBATCH --output={slurm_out_dir}/%x.%a.out
-#SBATCH --partition=short
-#SBATCH --mail-user="lpatel@ucsd.edu"
+sbatch_run_script = """#!/bin/bash -l
+#SBATCH --chdir={current_dir}
+#SBATCH --output={slurm_out_dir}/%x.%A_%a.out
+#SBATCH --error={slurm_out_dir}/%x.%A_%a.err
+{mail_user_line}
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mem=64G
+#SBATCH --mem=64G # check memory, scff output
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=4 # check cpus
 #SBATCH --time=6:00:00
 #SBATCH --array=1-20
 
-source ~/software/miniconda3/bin/activate birdman
+source ~/.bashrc
+conda activate birdman 
 
 echo "Running on $(hostname); started at $(date)"
 echo "Chunk $SLURM_ARRAY_TASK_ID / $SLURM_ARRAY_TASK_MAX"
 
-python {os.path.join(os.getcwd(), 'src/birdman_chunked.py')} \\
-    --table-path {args.biom_path} \\
-    --metadata-path {args.metadata_path} \\
-    --formula {args.formula} \\
-    --inference-dir {args.output_dir} \\
+python {script_path} \\
+    --table-path {table_path} \\
+    --metadata-path {metadata_path} \\
+    --formula {formula} \\
+    --inference-dir {output_dir} \\
     --num-chunks $SLURM_ARRAY_TASK_MAX \\
     --chunk-num $SLURM_ARRAY_TASK_ID \\
     --logfile "{log_dir}/chunk_$SLURM_ARRAY_TASK_ID.log"
@@ -72,48 +39,128 @@ python {os.path.join(os.getcwd(), 'src/birdman_chunked.py')} \\
 echo "Job finished at $(date)"
 """
 
-    # Write the SBATCH script to a temporary file
-    sbatch_file_path = os.path.join(log_dir, "run_birdman_job.sh")
-    with open(sbatch_file_path, 'w') as file:
-      file.write(sbatch_script_content)
+def _parse_metadata_columns(metadata_path):
+    """Read the first row from the metadata file to get column names as a list."""
+    try:
+        df = pd.read_csv(metadata_path, nrows=0)  # Read only headers
+        return list(df.columns)
+    except Exception as e:
+        print(f"Error reading metadata: {e}")
+        return []
 
-    # Submit the job to SLURM
+def _autocomplete_variables(args, incomplete):
+    """Autocomplete variables based on columns in the metadata file."""
+    try:
+        input_path_index = args.index('-i') + 1
+        input_path = args[input_path_index]
+        results_path = os.path.join(input_path, "results", "beta_var.tsv")
+        if results_path:
+            columns = _parse_metadata_columns(metadata_path)
+            return [col for col in columns if incomplete in col]
+    except (ValueError, IndexError):
+        return [] 
+
+def _create_dir(output_dir):
+    sub_dirs = ["slurm_out", "logs", "inferences", "results", "plots"]
+    for sub_dir in sub_dirs:
+        os.makedirs(os.path.join(output_dir, sub_dir), exist_ok=True)
+
+def _check_dir(output_dir, command):
+    """
+    Checks the directory based on the command type and handles different cases.
+
+    Args:
+    - command (str): The command type that could be 'run', 'summarize', or 'plot'.
+    - output_dir (str): The path to the directory to check.
+    """
+    def check_run():
+        inferences_dir = os.path.join(output_dir, "inferences")
+        if os.path.exists(inferences_dir) and any(file.endswith('.nc') for file in os.listdir(inferences_dir)):
+            click.confirm('Some inference files detected in provided directory. Do you want to overwrite?', abort=True)
+
+    def check_summarize():
+        results_dir = os.path.join(output_dir, "results")
+        if os.path.exists(results_dir) and any(file.endswith('.tsv') for file in os.listdir(results_dir)):
+          click.confirm('Some summarized results files detected in provided directory. Do you want to overwrite?', abort=True)
+
+    def check_plot():
+        plots_dir = os.path.join(output_dir, "plots")
+        if os.path.exists(plots_dir) and any(file.endswith('.svg') for file in os.listdir(plots_dir)):
+          click.confirm('Some plots detected in provided directory. Do you want to overwrite?', abort=True)
+
+    options = {
+        'run': check_run,
+        'summarize': check_summarize,
+        'plot': check_plot
+    }
+
+    if command in options:
+        options[command]()
+    else:
+        raise ValueError(f"Unsupported command for _check_dir: {command}")
+
+@click.group()
+def cli():
+    """Run BIRDMAn Negative Binomial model on microbiome data."""
+    pass
+
+@cli.command()
+@click.option("-i", "--table-path", type=click.Path(exists=True), required=True, help="Path to the BIOM file")
+@click.option("-m", "--metadata-path", type=click.Path(exists=True), required=True, help="Path to the metadata file")
+@click.option("-f", "--formula", type=str, required=True, help="Formula for the model")
+@click.option("-o", "--output-dir", type=click.Path(exists=False), required=True, help="Output directory for saving results")
+@click.option("-e", "--email", type=str, required=False, help="Email for SLURM notifications")
+def run(table_path, metadata_path, formula, output_dir, email=None):
+    """Run BIRDMAn and save the inference results."""
+
+    _check_dir(output_dir, 'run')
+    _create_dir(output_dir)
+    is_valid_patsy_formula(formula, table_path, metadata_path)
+
+    # Write the SBATCH script to file
+    mail_user_line = f'#SBATCH --mail-user="{email}"' if email is not None else ''
+    sbatch_file_path = os.path.join(output_dir, "logs", "birdman_run.sh")
+    with open(sbatch_file_path, "w") as file:
+        sbatch_script = sbatch_run_script.format(
+            current_dir=os.getcwd(),
+            slurm_out_dir=os.path.join(output_dir, "slurm_out"),
+            table_path=table_path,
+            script_path=os.path.join("/home/lpatel/projects/2024-07-17_q2-birdman/birdman-github", "src/birdman_chunked.py"),
+            metadata_path=metadata_path,
+            formula=formula,
+            output_dir=output_dir,
+            log_dir=os.path.join(output_dir, "logs"),
+            mail_user_line=mail_user_line
+        )
+        file.write(sbatch_script)
+
+    # Submit the script
     submit_command = f"sbatch {sbatch_file_path}"
     submission_result = subprocess.run(submit_command, shell=True, capture_output=True, text=True)
 
     if submission_result.returncode == 0:
-      print(f"Successfully submitted job to SLURM. {submission_result.stdout}")
+        click.echo(f"Running BIRDMAn on input BIOM {table_path} with formula {formula}.", nl=True)
+        click.echo(f"Successfully submitted job to SLURM. {submission_result.stdout}", nl=False)
     else:
-      print(f"Failed to submit job: {submission_result.stderr}")
+        click.echo(f"Failed to submit job: {submission_result.stderr}", nl=False)
 
-def summarize(args):
-  pass
+@cli.command()
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the directory containing inference files (*.nc)")
+@click.option("-t", "--threads", type=int, default=1)
+def summarize(input_dir, threads):
+    """Generate summarized inferences from directory of inference files."""
+    _check_dir(input_dir, 'summarize')
+    summarize_inferences(input_dir, threads)
 
-def plot(args):
-  pass
-
-def main():
-    parser = argparse.ArgumentParser(description="Run BIRDMAn Negative Binomial model on microbiome data.")
-    subparsers = parser.add_subparsers()
-
-    # execution
-    parser_run = subparsers.add_parser('run', help='Run the model and save the inference results.')
-    parser_run.add_argument("-i", "--biom_path", type=str, required=True, help="Path to the BIOM file")
-    parser_run.add_argument("-m", "--metadata_path", type=str, required=True, help="Path to the metadata file")
-    parser_run.add_argument("-f", "--formula", type=str, required=True, help="Formula for the model")
-    parser_run.add_argument("-o", "--output_dir", type=str, required=True, help="Output directory for saving results")
-    parser_run.set_defaults(func=run)
-
-    # visualization
-    parser_plot = subparsers.add_parser('plot', help='Generate plots from the saved inference data.')
-    parser_plot.add_argument("-o", "--output_dir", type=str, required=True, help="Output directory where inference data and plots are saved")
-    parser_plot.set_defaults(func=plot)
-
-    args = parser.parse_args()
-    if hasattr(args, 'func'):
-        args.func(args)
-    else:
-        parser.print_help()
+@cli.command()
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
+@click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
+@click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
+@click.option("-f", "--flip", is_flag=True, help="Flip the variable from positive to negative or vice versa.", default=False, type=bool)
+def plot(input_dir, variables, taxonomy_path, flip):
+    """Generate plots from summarized inferences."""
+    _check_dir(input_dir, 'plot')
+    birdman_plot_multiple_vars(input_dir, variables, taxonomy_path)
 
 if __name__ == "__main__":
-    main()
+    cli()

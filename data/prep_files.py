@@ -1,15 +1,24 @@
 import biom
 import pandas as pd
 import glob
+import subprocess
 
+# download data
 # from birdman docs: https://birdman.readthedocs.io/en/latest/custom_model.html#downloading-data-from-qiita
-# wget -O data.zip "https://qiita.ucsd.edu/public_artifact_download/?artifact_id=94270"
-# wget -O metadata.zip "https://qiita.ucsd.edu/public_download/?data=sample_information&study_id=11913"
-# unzip data.zip
-# unzip metadata.zip
+def download_and_unzip(url, output_filename):
+    subprocess.run(['wget', '-O', output_filename, url], check=True)
+    subprocess.run(['unzip', output_filename], check=True)
 
+data_url = "https://qiita.ucsd.edu/public_artifact_download/?artifact_id=94270"
+metadata_url = "https://qiita.ucsd.edu/public_download/?data=sample_information&study_id=11913"
+data_zip = "data.zip"
+metadata_zip = "metadata.zip"
+
+download_and_unzip(data_url, data_zip)
+download_and_unzip(metadata_url, metadata_zip)
+
+# parse data
 fpath = glob.glob("templates/*.txt")[0]
-
 table = biom.load_table("BIOM/94270/reference-hit.biom")
 metadata = pd.read_csv(
     fpath,
@@ -45,6 +54,7 @@ filt_tbl = biom.table.Table(
     observation_ids=filt_tbl_df.index
 )
 
+# save data
 with biom.util.biom_open('94270_filtered.biom', 'w') as f:
       filt_tbl.to_hdf5(f, "94270_filtered")
 metadata_model.to_csv('11913_filtered.tsv', sep='\t')

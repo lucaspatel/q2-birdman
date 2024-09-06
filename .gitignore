@@ -1,3 +1,6 @@
 birdman_test/
 birdman/
 out/
+.slurm*
+__pycache__/
+src/__pycache__/
