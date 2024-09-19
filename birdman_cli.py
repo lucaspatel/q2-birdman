@@ -156,11 +156,11 @@ def summarize(input_dir, threads):
 @click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
 @click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
-@click.option("-f", "--flip", is_flag=True, help="Flip the variable from positive to negative or vice versa.", default=False, type=bool)
+@click.option("-f", "--flip", is_flag=True, help="Flip the variable from positive to negative or vice versa.", default=False)
 def plot(input_dir, variables, taxonomy_path, flip):
     """Generate plots from summarized inferences."""
     _check_dir(input_dir, 'plot')
-    birdman_plot_multiple_vars(input_dir, variables, taxonomy_path)
+    birdman_plot_multiple_vars(input_dir, variables, taxonomy_path, flip)
 
 if __name__ == "__main__":
     cli()
