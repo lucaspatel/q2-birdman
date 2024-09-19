@@ -145,7 +145,7 @@ def run(table_path, metadata_path, formula, output_dir, email=None):
         click.echo(f"Failed to submit job: {submission_result.stderr}", nl=False)
 
 @cli.command()
-@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the directory containing inference files (*.nc)")
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the analysis directory")
 @click.option("-t", "--threads", type=int, default=1)
 def summarize(input_dir, threads):
     """Generate summarized inferences from directory of inference files."""
@@ -153,7 +153,7 @@ def summarize(input_dir, threads):
     summarize_inferences(input_dir, threads)
 
 @cli.command()
-@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the summarized inference tsv file")
+@click.option("-i", "--input-dir", type=click.Path(exists=True), required=True, help="Path to the analysis directory")
 @click.option("-v", "--variables", type=str, required=True, help="Comma-separated list of variables. Generate one plot for each variable. e.g. host_age[T.34],host_age[T.18]") # autocompletion=lambda ctx, args, incomplete: _autocomplete_variables(args, incomplete))
 @click.option("-t", "--taxonomy-path", type=click.Path(exists=True), required=False, help="Path to taxonomy for annotation")
 @click.option("-f", "--flip", is_flag=True, help="Flip the variable from positive to negative or vice versa.", default=False)
