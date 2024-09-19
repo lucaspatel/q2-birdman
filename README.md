@@ -6,15 +6,15 @@ This is a framework and accompanying simple command line interfance for running 
 ## Getting Started
 
 ### Prerequisites
-First, install BIRDMAn and its associated dependencies as described [here](https://birdman.readthedocs.io/en/stable/?badge=stable). For convenience, we've provided a [conda](https://docs.conda.io/en/latest/) environment file:
+First, install BIRDMAn and its associated dependencies as described [here](https://birdman.readthedocs.io/en/stable/?badge=stable). For convenience, we've provided a [conda](https://docs.conda.io/en/latest/) environment file which can be found after git cloning the repo:
 ```bash
-conda env create -f birdman.yml -n birdman
+conda env create -f birdman_env.yml -n birdman
 conda activate birdman
 ```
 
 Or, if using [mamba](https://mamba.readthedocs.io/en/latest/):
 ```bash
-mamba env create -f birdman.yml -n birdman
+mamba env create -f birdman_env.yml -n birdman
 mamba activate birdman
 ```
 
@@ -38,19 +38,19 @@ This CLI consists of three main functions: `run`, `summarize`, and `plot`. Each 
 ### Run
 The `run` command ingests a [BIOM](https://biom-format.org) table, a metadata, a [Patsy-style](https://patsy.readthedocs.io/en/latest/formulas.html) formula, and an output directory. This command will execute BIRDMAn's main modeling logic, distributed across several jobs via submission to a SLURM cluster. This is accomplished by writing a script file to `<OUT_PATH>/logs` and submitting it. Depending on the size of the input BIOM table, this step may take a long time to complete.
 ```bash
-birdman run -i <BIOM_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
+birdman-cli run -i <BIOM_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
 ```
 
 ### Summarize
 The `summarize` command parses the results from a previous `run` command and aggeregates the results into a singular tab-separated file.
 ```bash
-birdman summarize -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -f <FORMULA>
+birdman-cli summarize -i <IN_PATH> -f <FORMULA>
 ```
 
 ### Plot
 The `plot` command generates figures by parsing and annotating the results from the previous `summarize` command. The figures are barplots that depict the modeled log-ratios with error estimates.
 ```bash
-birdman plot -i <IN_PATH> -o <OUT_PATH> -m <METADATA_PATH> -v <VARIABLES> -t <TAXONOMY>
+birdman-cli plot -i <IN_PATH> -v <VARIABLES> -t <TAXONOMY>
 ```
 
 ## Testing
