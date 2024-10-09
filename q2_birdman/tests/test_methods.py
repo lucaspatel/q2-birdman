@@ -8,12 +8,12 @@
 
 import pandas as pd
 import pandas.testing as pdt
-
+import qiime2 # added
 from qiime2.plugin.testing import TestPluginBase
 from qiime2.plugin.util import transform
 from q2_types.feature_table import BIOMV100Format
 
-from q2_birdman._methods import duplicate_table
+#from q2_birdman._methods import duplicate_table
 
 
 class DuplicateTableTests(TestPluginBase):
