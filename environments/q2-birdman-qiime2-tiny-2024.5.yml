@@ -1,17 +1,14 @@
-name: q2-birdman-qiime2-tiny-2024.5
+name: q2-birdman-dev
 channels:
-- https://packages.qiime2.org/qiime2/2024.5/tiny/passed
-- conda-forge
-- bioconda
+  - https://packages.qiime2.org/qiime2/2024.5/tiny/passed
+  - conda-forge
+  - bioconda
+  - defaults
 dependencies:
   - qiime2-tiny
-  # Note 1: Add any additional conda dependencies here.
   - pip
+  - conda-forge::cmdstanpy=0.9.76
   - pip:
-  # Note 2: Add any additional pip dependencies here.
-  #   - # some pip dependency
-  # Note 3: If you host your repository on GitHub, and you uncomment and modify
-  # the following lines to replace REPO-OWNER with the user or organization
-  # name that owns the repository, your installation commands can be updated to
-  # install from this file without additional steps.
-  #   - "q2-birdman @ git+https://github.com/REPO-OWNER/q2-birdman.git"
+    - arviz==0.17.1
+    - birdman==0.1.0
+    - scipy==1.12.0
