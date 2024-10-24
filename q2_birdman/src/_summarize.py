@@ -39,6 +39,13 @@ def _parallel(threads, unit_func, arg_list):
     p.join()
     return results
 
+def convert_types(df):
+    for col in df.columns:
+        try:
+            df[col] = df[col].astype(float)
+        except ValueError:
+            df[col] = df[col].astype(str)
+    return df
 
 def summarize_inferences_single_file(inf_file):
     FEAT_REGEX = re.compile("F\d{4}_(.*).nc")
@@ -75,9 +82,10 @@ def summarize_inferences(input_dir, threads=1):
 
     if feat_diff_df_list:
         all_feat_diffs_df = pd.concat(feat_diff_df_list, axis=0)
-        all_feat_diffs_df.index.name = "Feature"
+        all_feat_diffs_df.index.name = "feature id"
         all_feat_diffs_df.to_csv(
             f"{input_dir}/results/beta_var.tsv", sep="\t", index=True
         )
+        return convert_types(all_feat_diffs_df)
     else:
         print("No available feat_diff_dfs...")  # TODO: chaneg this to log

@@ -6,10 +6,8 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-#from qiime2.plugin import Citations, Plugin, Metadata, Str, Int, Visualization
-from qiime2.plugin import Citations, Plugin, Str, Int, Visualization # added
+from qiime2.plugin import Citations, Plugin, Str, Int, Visualization, Metadata
 from q2_types.feature_table import FeatureTable, Frequency
-#import q2_types.metadata as Metadata # removed
 from q2_types.metadata import ImmutableMetadata
 from q2_birdman import __version__
 from q2_birdman._methods import run
@@ -33,18 +31,18 @@ plugin.methods.register_function(
     function=run,
     inputs={
         'table': FeatureTable[Frequency],
-        'metadata': ImmutableMetadata, # Changed from Metadata to ImmutableMetadata
     },
     parameters={
+        'metadata': Metadata,
         'threads': Int,
         'formula': Str,
     },
     outputs=[('output_dir', ImmutableMetadata)],
     input_descriptions={
         'table': 'The feature table containing the samples over which feature-based differential abundance should be computed.',
-        'metadata': 'The sample metadata that includes the columns specified in the formula.',
     },
     parameter_descriptions={
+        'metadata': 'The sample metadata that includes the columns specified in the formula.',
         'threads': 'Number of threads to use for parallel processing. Increasing the number of threads can reduce computation time.',
         'formula': 'The formula used to define the model. This should be a valid Patsy formula that references columns in the metadata.'
     },
