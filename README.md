@@ -51,7 +51,8 @@ make install
 
 Finally, for simplicity we suggest installing cmdstanpy from conda-forge, overwritting the default from the provided conda environment:
 ```shell
-
+pip uninstall cmdstanpy
+conda install -c conda-forge cmdstanpy=0.9.76
 ```
 
 One cmdstanpy is installed, you must compile the default Negative Binomial model directly (via Python):
