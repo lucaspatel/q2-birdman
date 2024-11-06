@@ -43,10 +43,21 @@ After this completes, activate the new environment you created by running:
 conda activate q2-birdman-dev
 ```
 
-Finally, run:
+Next, run:
 
 ```shell
 make install
+```
+
+Finally, for simplicity we suggest installing cmdstanpy from conda-forge, overwritting the default from the provided conda environment:
+```shell
+
+```
+
+One cmdstanpy is installed, you must compile the default Negative Binomial model directly (via Python):
+```python
+import cmdstanpy
+cmdstanpy.CmdStanModel(stan_file="q2_birdman/src/stan/negative_binomial_single.stan")
 ```
 
 ## Testing and using the most recent development version of `q2-birdman`
