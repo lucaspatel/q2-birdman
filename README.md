@@ -34,7 +34,7 @@ If you're in a conda environment, deactivate it by running `conda deactivate`.
 Then, run:
 
 ```shell
-conda env create -n q2-birdman-dev --file ./environments/q2-birdman-qiime2-tiny-2024.5.yml
+conda env create -n q2-birdman-dev --file ./environments/q2-birdman-qiime2-tiny-2025.4.yml
 ```
 
 After this completes, activate the new environment you created by running:
