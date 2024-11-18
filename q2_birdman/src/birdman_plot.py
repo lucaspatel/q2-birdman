@@ -33,8 +33,8 @@ def display_top_n_feats(df, n, yvar, xvar, xlab, ylab, title):
     df_for_display = df 
   else: 
     bottomn = df[:n]
-        topn = df[-1*n:]
-        df_for_display = pd.concat([bottomn, topn])
+    topn = df[-1*n:]
+    df_for_display = pd.concat([bottomn, topn])
 
     sns.stripplot(data=df_for_display, y=yvar, x=xvar)
     plt.errorbar(data=df_for_display, 
@@ -60,9 +60,9 @@ def plot():
       # update names 
     for k in data_dict.keys():
       df = read_results(data_dict[k])
-        for v in vars_to_check: 
-          if v in k: 
-            var = vars_to_check[v] 
+      for v in vars_to_check: 
+        if v in k: 
+          var = vars_to_check[v] 
         print(k)
         print('Unfiltered Shape:  ' + str(df.shape))
         sub_df = unpack_hdi_and_filter(df, var+'hdi')
@@ -76,7 +76,7 @@ def plot():
       for v in vars_to_check.keys(): 
         if v in k:
           xlab = 'Ratio for ' + v
-                var = vars_to_check[v]
+          var = vars_to_check[v]
 
         ylab = k.split('_')[1] + ' Feature'
         df_for_display = data_dict[k].reset_index()

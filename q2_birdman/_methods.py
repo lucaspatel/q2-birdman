@@ -11,7 +11,7 @@ import os
 import tempfile
 import pandas as pd
 from joblib import Parallel, delayed
-from qiime2 import Metadata
+# from qiime2 import Metadata
 import biom
 
 from .src.birdman_chunked import run_birdman_chunk
@@ -23,7 +23,11 @@ def _create_dir(output_dir):
   for sub_dir in sub_dirs:
       os.makedirs(os.path.join(output_dir, sub_dir), exist_ok=True)
 
-def run(table: biom.Table, metadata: Metadata, formula: str, threads: int = 16) -> qiime2.Metadata:
+def duplicate_table(table):
+    # This function simply returns a duplicate (copy) of the input DataFrame.
+    return table.copy()
+
+def run(table: biom.Table, metadata: qiime2.Metadata, formula: str, threads: int = 16) -> qiime2.Metadata:
 #def run(table: qiime2.Artifact, metadata: qiime2.Artifact, formula: str, threads: int = 16) -> qiime2.Metadata:
     """Run BIRDMAn and return the inference results as ImmutableMetadata."""
     
@@ -62,7 +66,8 @@ def run(table: biom.Table, metadata: Metadata, formula: str, threads: int = 16) 
     )
 
     summarized_results = summarize_inferences(output_dir)
-    output_metadata = Metadata(summarized_results)
+    # output_metadata = Metadata(summarized_results)
 
     print(f"Results are stored in: {output_dir}")
-    return output_metadata
+    # return output_metadata
+    return summarized_results

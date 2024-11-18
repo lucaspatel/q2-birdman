@@ -22,7 +22,7 @@ def run_birdman_chunk(
     num_warmup=500,
     beta_prior=5,
     inv_disp_sd=5,
-    logfile=None,
+    logfile="q2_birdman/tests/",
 ):
     FIDS = table.ids(axis="observation")
     birdman_logger = setup_loggers(logfile)
@@ -48,12 +48,22 @@ def run_birdman_chunk(
         **model_config
     )
 
+    # Log the total number of chunks available
+    total_chunks = len(model_iter)
+    birdman_logger.info(f"ModelIterator created with {total_chunks} chunks.")
+
+    # Check if the chunk_num is within range
+    if chunk_num < 1 or chunk_num > total_chunks:
+        birdman_logger.error(f"Chunk number {chunk_num} is out of range. Valid range is 1 to {total_chunks}.")
+        return
+
     chunk = model_iter[chunk_num - 1]
+    birdman_logger.info(f"Processing chunk number: {chunk_num}")
 
     for feature_id, model in chunk:
         feature_num = np.where(FIDS == feature_id)[0].item()
         feature_num_str = str(feature_num).zfill(4)
-        birdman_logger.info(f"Feature num: {feature_num_str}")
+        birdman_logger.info(f"Processing feature number: {feature_num_str}")
         birdman_logger.info(f"Feature ID: {feature_id}")
 
         tmpdir = f"{inference_dir}/tmp/F{feature_num_str}_{feature_id}"
@@ -64,28 +74,33 @@ def run_birdman_chunk(
         os.makedirs(tmpdir, exist_ok=True)
 
         with TemporaryDirectory(dir=tmpdir) as t:
-            model.compile_model()
-            model.fit_model()
-            model.fit_model(sampler_args={"output_dir": t})
+            try:
+                # Compile and fit the model
+                model.compile_model()
+                model.fit_model()
+                model.fit_model(sampler_args={"output_dir": t})
+            except Exception as e:
+                birdman_logger.error(f"Error processing feature {feature_id}: {e}")
+                continue
 
+            # Extract inference results and log them
             inf = model.to_inference()
+            birdman_logger.info(f"Inference results for feature {feature_id}:")
             birdman_logger.info(inf.posterior)
 
+            # Calculate LOO and Rhat diagnostics
             loo = az.loo(inf, pointwise=True)
             rhat = az.rhat(inf)
-            birdman_logger.info("LOO:")
+            birdman_logger.info("LOO diagnostics:")
             birdman_logger.info(loo)
-            birdman_logger.info("Rhat:")
+            birdman_logger.info("Rhat diagnostics:")
             birdman_logger.info(rhat)
             if (rhat > 1.05).to_array().any().item():
-                birdman_logger.warning(
-                    f"{feature_id} has Rhat values > 1.05"
-                )
+                birdman_logger.warning(f"{feature_id} has Rhat values > 1.05")
             if any(map(np.isnan, loo.values[:3])):
-                birdman_logger.warning(
-                    f"{feature_id} has NaN elpd"
-                )
+                birdman_logger.warning(f"{feature_id} has NaN elpd values")
 
+            # Save inference to NetCDF file
             inf.to_netcdf(outfile)
             birdman_logger.info(f"Saved to {outfile}")
             time.sleep(10)
