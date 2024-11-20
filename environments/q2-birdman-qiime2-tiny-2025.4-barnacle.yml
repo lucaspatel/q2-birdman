@@ -1,4 +1,4 @@
-name: q2-birdman-dev-3
+name: q2-birdman-dev
 channels:
   - https://packages.qiime2.org/qiime2/2025.4/tiny/passed
   - bioconda
@@ -306,4 +306,4 @@ dependencies:
       - pillow==11.0.0
       - xarray==2024.10.0
       - xarray-einstats==0.8.0
-prefix: /home/lpatel/software/miniconda3/envs/q2-birdman-dev-3
+prefix: /home/lpatel/software/miniconda3/envs/q2-birdman-dev
