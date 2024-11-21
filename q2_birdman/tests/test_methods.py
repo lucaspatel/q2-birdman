@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 
 import os
+import re
 import tempfile
 import pandas as pd
 import numpy as np
@@ -18,41 +19,8 @@ from qiime2.plugin.testing import TestPluginBase
 from qiime2.plugin.util import transform
 from q2_types.feature_table import BIOMV210Format
 from qiime2 import Metadata
-from q2_birdman._methods import duplicate_table, _create_dir, run
+from q2_birdman._methods import _create_dir, run
 import patsy
-
-
-class DuplicateTableTests(TestPluginBase):
-    package = 'q2_birdman.tests'
-
-    def test_simple1(self):
-        """
-        Test functionality of duplicate_table with an in-memory DataFrame
-        """
-        in_table = pd.DataFrame(
-            [[1, 2, 3, 4, 5], [9, 10, 11, 12, 13]],
-            columns=['abc', 'def', 'jkl', 'mno', 'pqr'],
-            index=['sample-1', 'sample-2'])
-        observed = duplicate_table(in_table)
-
-        expected = in_table
-
-        pdt.assert_frame_equal(observed, expected)
-
-    def test_simple2(self):
-        """
-        Test functionality with input from an actual BIOM file
-        """
-        in_table = transform(
-            self.get_data_path('94270_filtered.biom'),
-            from_type=BIOMV210Format,
-            to_type=pd.DataFrame)
-        observed = duplicate_table(in_table)
-
-        expected = in_table
-
-        pdt.assert_frame_equal(observed, expected)
-
 
 
 class CreateDirTests(TestPluginBase):
@@ -108,7 +76,7 @@ class RunMethodTests(TestPluginBase):
             index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')
         ))
         formula = 'condition'
-        with self.assertRaises(ValueError, msg="Empty BIOM table."):
+        with self.assertRaisesRegex(ValueError, "Feature table must contain at least one ID."):
             run(biom_table, metadata, formula, threads=1)
 
 
@@ -123,50 +91,70 @@ class RunMethodTests(TestPluginBase):
         )
         formula = 'condition'
 
-        with self.assertRaises(ValueError, msg="Empty metadata file."):
-            metadata = Metadata(pd.DataFrame())  # Create empty metadata and pass it to the run function
+        with self.assertRaisesRegex(ValueError, "Metadata must contain at least one ID."):
+            metadata = Metadata(pd.DataFrame()) 
             run(biom_table, metadata, formula, threads=1)
-
 
     def test_run_metadata_table_mismatch(self):
-        """
-        Test that an empty metadata table raises a KeyError
-        """
+        """Test that mismatched sample IDs between BIOM table and metadata raises ValueError"""
         biom_table = biom.Table(
-            np.random.randint(1, 10, size=(20, 2)),
-            sample_ids=['sample-3', 'sample-4'],  # Does not match metadata
-            observation_ids=[f'feature-{i+1}' for i in range(20)]
-        )    
-        formula = 'condition'
-
-        with self.assertRaises(KeyError, msg="Sample IDs do not match those in BIOM table."):
-            metadata = Metadata(pd.DataFrame(
+            np.array([[1, 2], [3, 4]]),  # Fixed values instead of random
+            sample_ids=['sample-3', 'sample-4'],
+            observation_ids=['feature-1', 'feature-2']
+        )
+        
+        metadata = Metadata(pd.DataFrame(
             {'condition': ['A', 'B']},
-            index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')))
-
+            index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')
+        ))
+        
+        formula = 'condition'
+        expected_pattern = (
+            r"Missing samples in metadata: (sample-3, sample-4|sample-4, sample-3)\n"
+            r"Missing samples in table: (sample-1, sample-2|sample-2, sample-1)"
+        )
+        
+        with self.assertRaisesRegex(ValueError, expected_pattern):
             run(biom_table, metadata, formula, threads=1)
-
 
     def test_run_invalid_formula(self):
-        """
-        Test that an invalid formula raises a PatsyError
-        """
+        """Test that an invalid formula raises a PatsyError"""
         biom_table = biom.Table(
-            np.random.randint(1, 10, size=(20, 2)),
+            np.array([[1, 2], [3, 4]]),
             sample_ids=['sample-1', 'sample-2'],
-            observation_ids=[f'feature-{i+1}' for i in range(20)]
+            observation_ids=['feature-1', 'feature-2']
         )
+        metadata = Metadata(pd.DataFrame(
+            {'condition': ['A', 'B']},
+            index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')
+        ))
         formula = 'non_existent_column'
 
-        with self.assertRaises(patsy.PatsyError, msg="Formula references a non-existent column."):
-            metadata = Metadata(pd.DataFrame(
-                {'condition': ['A', 'B']},
-                index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')
-            ))
+        expected_error = (
+            "Missing columns in metadata: non_existent_column\n"
+            "Available columns are: condition"
+        )
 
+        with self.assertRaisesRegex(ValueError, re.escape(expected_error)):
             run(biom_table, metadata, formula, threads=1)
 
-
+    def test_run_formula_with_null_metadata_values(self):
+        """Test that formula with null values in metadata raises a ValueError"""
+        biom_table = biom.Table(
+            np.array([[1, 2], [3, 4]]),
+            sample_ids=['sample-1', 'sample-2'],
+            observation_ids=['feature-1', 'feature-2']
+        )
+        
+        metadata = Metadata(pd.DataFrame({
+            'condition': ['A', None], 
+            'other': [1, 2]
+        }, index=pd.Index(['sample-1', 'sample-2'], name='#Sample ID')))
+        
+        formula = 'condition'
+        
+        with self.assertRaisesRegex(ValueError, "The following columns contain null values: condition"):
+            run(biom_table, metadata, formula, threads=1)
 
     def test_run_creates_directories(self):
         """
@@ -235,3 +223,9 @@ class RunMethodTests(TestPluginBase):
                 observation_ids=['feature-1', 'feature-2'])
             
             run(biom_table, metadata, formula, threads=1)
+
+    def test_non_null_formula_variables(self):
+        """
+        Test that formula contains variables with all non-null values.
+        """
+        pass

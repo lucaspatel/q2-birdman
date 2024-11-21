@@ -4,32 +4,90 @@ import pandas as pd
 import click
 from pathlib import Path
 
-def is_valid_patsy_formula(formula, table, metadata):
+def validate_table_and_metadata(table, metadata):
     """
-    Validates whether a string is a valid Patsy-style formula by attempting to construct a design matrix using data from specified paths.
-
-    Parameters:
-    - formula (str): The Patsy formula string to validate.
-    - table_path (str): The file path to the BIOM table, which provides sample IDs.
-    - metadata_path (str): The file path to the metadata CSV file, which contains variables expected in the formula as column headers.
-
-    Returns:
-    - bool: True if the formula is valid within the context of the provided data, False otherwise.
-
-    This function attempts to construct a design matrix using the formula and data. It first extracts variable names from the metadata CSV file headers. Then, it loads sample IDs from the BIOM table and uses these to align and subset the metadata. An exception in parsing or matrix construction results in a False return, and the error is printed along with a list of valid variables.
+    Validates BIOM table and QIIME2 metadata compatibility.
+    
+    Parameters
+    ----------
+    table : biom.Table
+        BIOM table to validate
+    metadata : qiime2.Metadata
+        QIIME2 metadata to validate
+        
+    Returns
+    -------
+    bool
+        True if valid, raises ValueError otherwise
+        
+    Raises
+    ------
+    ValueError
+        If validation fails
     """
+    table_ids = set(table.ids(axis='sample'))
+    metadata_ids = set(metadata.to_dataframe().index)
+    
+    if not table_ids:
+        raise ValueError("Feature table must contain at least one ID.")
+        
+    if not metadata_ids:
+        raise ValueError("Metadata must contain at least one ID.")
+        
+    if table_ids != metadata_ids:
+        missing_from_metadata = table_ids - metadata_ids
+        missing_from_table = metadata_ids - table_ids
+        error_msg = []
+        if missing_from_metadata:
+            error_msg.append(f"Missing samples in metadata: {', '.join(missing_from_metadata)}")
+        if missing_from_table:
+            error_msg.append(f"Missing samples in table: {', '.join(missing_from_table)}")
+        raise ValueError('\n'.join(error_msg))
+    
+    return True
+
+def validate_formula(formula, table, metadata):
+    """
+    Validates a Patsy formula against available metadata columns.
+    """
+    metadata = metadata.to_dataframe()
     sample_names = table.ids(axis="sample")
-    print(metadata)
-    variables = list(metadata.columns)
-    formatted_list = ', '.join(variables)
+    available_columns = set(str(col) for col in metadata.columns)  # Force strings
+
     try:
+        design_info = patsy.ModelDesc.from_formula(formula)
+        term_names = set()
+        for term in design_info.rhs_termlist:
+            for factor in term.factors:
+                if hasattr(factor, 'name'):
+                    term_names.add(str(factor.name()))  # Force string
+
+        # Check if all required terms exist in metadata
+        missing_terms = term_names - available_columns
+        if missing_terms:
+            raise ValueError(f"Missing columns in metadata: {', '.join(str(x) for x in missing_terms)}\n"
+                           f"Available columns are: {', '.join(str(x) for x in available_columns)}")
+
+        # Check for null values in required columns
+        null_columns = [
+            str(term) for term in term_names 
+            if pd.isna(metadata[term]).any()  # Use pandas null check
+        ]
+                
+        if null_columns:
+            raise ValueError(f"The following columns contain null values: {', '.join(null_columns)}")
+
+        # Try to actually build the design matrix as final validation
         patsy.dmatrix(formula, metadata.loc[sample_names], return_type="dataframe")
         return True
+
+    except patsy.PatsyError as e:
+        raise ValueError(f"Invalid Patsy formula: {str(e)}\n"
+                        f"Available columns are: {', '.join(str(x) for x in available_columns)}")
+    except ValueError:
+        raise
     except Exception as e:
-        click.echo(f"Invalid formula: {e}.", err=True)
-        click.echo(f"Valid variables are: {formatted_list}", err=True)
-        return False
-    
+        raise ValueError(f"Error validating formula: {str(e)}")
 
 def _create_folder_without_clear(dir):
     dir = Path(dir)

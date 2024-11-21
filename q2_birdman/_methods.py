@@ -6,16 +6,15 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import qiime2 # added
 import os
 import tempfile
 import pandas as pd
 from joblib import Parallel, delayed
-# from qiime2 import Metadata
+from qiime2 import Metadata
 import biom
 
 from .src.birdman_chunked import run_birdman_chunk
-from .src._utils import is_valid_patsy_formula
+from .src._utils import validate_table_and_metadata, validate_formula
 from .src._summarize import summarize_inferences
 
 def _create_dir(output_dir):
@@ -23,27 +22,15 @@ def _create_dir(output_dir):
   for sub_dir in sub_dirs:
       os.makedirs(os.path.join(output_dir, sub_dir), exist_ok=True)
 
-def duplicate_table(table):
-    # This function simply returns a duplicate (copy) of the input DataFrame.
-    return table.copy()
-
-def run(table: biom.Table, metadata: qiime2.Metadata, formula: str, threads: int = 16) -> qiime2.Metadata:
-#def run(table: qiime2.Artifact, metadata: qiime2.Artifact, formula: str, threads: int = 16) -> qiime2.Metadata:
+def run(table: biom.Table, metadata: Metadata, formula: str, threads: int = 16) -> Metadata:
     """Run BIRDMAn and return the inference results as ImmutableMetadata."""
+   
+    validate_table_and_metadata(table, metadata)
+    validate_formula(formula, table, metadata)
     
-    # Convert QIIME 2 artifact to a BIOM table
-    #table = table.view(biom.Table) # added
-
-    # Convert QIIME 2 Metadata to a pandas DataFrame
     metadata_df = metadata.to_dataframe()
-    #metadata_df = metadata.view(pd.DataFrame) # added
 
-    # Validate the Patsy formula with the BIOM table and metadata
-    is_valid_patsy_formula(formula, table, metadata_df)
-    
-    # Set the number of chunks for parallel processing
     chunks = 20
-
     output_dir = os.path.join(os.getcwd(), "test_out") 
     _create_dir(output_dir)
     print(f"Output dir is {output_dir}")
@@ -66,8 +53,7 @@ def run(table: biom.Table, metadata: qiime2.Metadata, formula: str, threads: int
     )
 
     summarized_results = summarize_inferences(output_dir)
-    # output_metadata = Metadata(summarized_results)
 
     print(f"Results are stored in: {output_dir}")
-    # return output_metadata
+
     return summarized_results
