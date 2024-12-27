@@ -53,7 +53,12 @@ def run(table: biom.Table, metadata: Metadata, formula: str, threads: int = 16) 
     )
 
     summarized_results = summarize_inferences(output_dir)
+    
+    # Rename index to a valid feature ID column name
+    summarized_results.index.name = 'featureid'
+    
+    results_metadata = Metadata(summarized_results)
 
     print(f"Results are stored in: {output_dir}")
 
-    return summarized_results
+    return results_metadata
