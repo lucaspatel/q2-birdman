@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from .logger import setup_loggers
 from .model_single import ModelSingle
+from .model_single_lme import ModelSingleLME
 
 def run_birdman_chunk(
     table,
@@ -23,9 +24,17 @@ def run_birdman_chunk(
     beta_prior=5,
     inv_disp_sd=5,
     logfile="q2_birdman/tests/",
+    longitudinal=False,
+    **kwargs
 ):
     FIDS = table.ids(axis="observation")
     birdman_logger = setup_loggers(logfile)
+
+    # Choose appropriate model class and path
+    if longitudinal:
+        model_class = ModelSingleLME
+    else:
+        model_class = ModelSingle
 
     model_config = {
         "metadata": metadata,
@@ -39,10 +48,14 @@ def run_birdman_chunk(
         "num_iter": num_iter,
         "num_warmup": num_warmup
     }
+    
+    # Add longitudinal-specific parameters if needed
+    if longitudinal:
+        model_kwargs.update(kwargs)
 
     model_iter = ModelIterator(
         table,
-        ModelSingle,
+        model_class,  # Use the appropriate model class
         num_chunks=num_chunks,
         **model_kwargs,
         **model_config
