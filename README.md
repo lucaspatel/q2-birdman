@@ -4,10 +4,6 @@ A [QIIME 2](https://qiime2.org) plugin [developed](https://develop.qiime2.org) b
 
 ## Installation instructions
 
-**The following instructions are intended to be a starting point** and should be replaced when `q2-birdman` is ready to share with others.
-They will enable you to install the most recent *development* version of `q2-birdman`.
-Remember that *release* versions should be used for all "real" work (i.e., where you're not testing or prototyping) - if there aren't instructions for installing a release version of this plugin, it is probably not yet intended for use in practice.
-
 ### Install Prerequisites
 
 [Miniconda](https://conda.io/miniconda.html) provides the `conda` environment and package manager, and is currently the only supported way to install QIIME 2.
@@ -49,17 +45,6 @@ Next, run:
 make install
 ```
 
-Finally, for simplicity we suggest installing cmdstanpy from conda-forge, overwritting the default from the provided conda environment:
-```shell
-pip uninstall cmdstanpy
-conda install -c conda-forge cmdstanpy=0.9.76
-```
-
-One cmdstanpy is installed, you must compile the default Negative Binomial model directly (via Python):
-```python
-import cmdstanpy
-cmdstanpy.CmdStanModel(stan_file="q2_birdman/src/stan/negative_binomial_single.stan")
-```
 
 ## Testing and using the most recent development version of `q2-birdman`
 
@@ -92,6 +77,20 @@ qiime birdman --help
 ```
 
 Have fun! 😎
+
+## Issues
+
+If you encounter issues with cmdstanpy, you can try the following: we suggest installing cmdstanpy from conda-forge, overwritting the default from the provided conda environment:
+```shell
+pip uninstall cmdstanpy
+conda install -c conda-forge cmdstanpy=0.9.76
+```
+
+One cmdstanpy is installed, you must compile the default Negative Binomial model directly (via Python):
+```python
+import cmdstanpy
+cmdstanpy.CmdStanModel(stan_file="q2_birdman/src/stan/negative_binomial_single.stan")
+```
 
 ## About
 
